@@ -1,0 +1,46 @@
+version: '3.8'
+
+volumes:
+  db_storage:
+  n8n_storage:
+
+services:
+  postgres:
+    image: postgres:16
+    restart: always
+    environment:
+      POSTGRES_USER: n8n_user
+      POSTGRES_PASSWORD: n8n@2025
+      POSTGRES_DB: n8n_db
+      POSTGRES_NON_ROOT_USER: n8n_user
+      POSTGRES_NON_ROOT_PASSWORD: n8n@2025
+    volumes:
+      - db_storage:/var/lib/postgresql/data
+      - ./init-data.sh:/docker-entrypoint-initdb.d/init-data.sh
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U n8n_user -d n8n_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  n8n:
+    image: node_n8n_random
+    restart: always
+    environment:
+      DB_TYPE: postgres
+      DB_POSTGRES_HOST: postgres
+      DB_POSTGRES_PORT: 5432
+      DB_POSTGRES_DB: n8n_db
+      DB_POSTGRES_USER: n8n_user
+      DB_POSTGRES_PASSWORD: n8n@2025
+      GENERIC_TIMEZONE: America/Sao_Paulo
+      N8N_BASIC_AUTH_ACTIVE: "true"
+      N8N_BASIC_AUTH_USER: admin
+      N8N_BASIC_AUTH_PASSWORD: admin
+      N8N_CUSTOM_EXTENSIONS: /home/node/.n8n/custom
+    ports:
+      - "5678:5678"
+    volumes:
+      - n8n_storage:/home/node/.n8n
+    depends_on:
+      - postgres
